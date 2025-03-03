@@ -15,7 +15,7 @@ class VideoDownloaderApp:
 
     def __init__(self, root):
         self.root = root
-        self.root.title("Video/Audio Downloader")
+        self.root.title("NOTNET")
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         
         self.setup_variables()
