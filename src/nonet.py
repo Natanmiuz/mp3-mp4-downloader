@@ -1,144 +1,211 @@
-import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
-import yt_dlp
-import threading
-import os
 import sys
+import os
+import threading
 from datetime import datetime
+from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
+                               QLabel, QLineEdit, QComboBox, QRadioButton, QGroupBox,
+                               QPushButton, QTextEdit, QFileDialog, QMessageBox, QButtonGroup,
+                               QSizePolicy, QScrollArea)
+from PySide6.QtCore import Qt, QObject, Signal, QSize
+import yt_dlp
 
-class VideoDownloaderApp:
+class DownloadSignals(QObject):
+    update_progress = Signal(str)
+    download_complete = Signal()
+    error_occurred = Signal(str)
+
+class VideoDownloader(QMainWindow):
     PLATFORMS = ['Auto-detect', 'YouTube', 'Facebook', 'TikTok', 'Twitter']
     FORMATS = [('MP4', 'mp4'), ('MP3', 'mp3')]
     RESOLUTIONS = ['360p', '480p', '720p', '1080p', 'Best available']
-    DEFAULT_FORMAT = 'mp4'
-    DEFAULT_RESOLUTION = '360p'
+    
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("NOTNET - Video Downloader")
+        self.setMinimumSize(QSize(400, 500))
+        self.setup_ui()
+        self.setup_signals()
+        self.download_thread = None
+        self.download_path = ""
+        self.setup_styles()
 
-    def __init__(self, root):
-        self.root = root
-        self.root.title("NOTNET")
-        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+    def setup_styles(self):
+        self.setStyleSheet("""
+            QMainWindow {
+                background-color: #f5f6fa;
+            }
+            QGroupBox {
+                border: 1px solid #dcdde1;
+                border-radius: 8px;
+                margin-top: 10px;
+                padding: 15px 5px 5px 5px;
+                font-weight: bold;
+                color: #2f3640;
+            }
+            QLineEdit, QComboBox, QTextEdit {
+                border: 1px solid #dcdde1;
+                border-radius: 4px;
+                padding: 5px;
+                background: white;
+            }
+            QPushButton {
+                background-color: #487eb0;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                min-width: 80px;
+            }
+            QPushButton:hover {
+                background-color: #40739e;
+            }
+            QPushButton:disabled {
+                background-color: #dcdde1;
+                color: #7f8fa6;
+            }
+            QTextEdit {
+                background-color: #ffffff;
+                font-family: monospace;
+            }
+        """)
+
+    def setup_ui(self):
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        main_layout = QVBoxLayout(central_widget)
+        main_layout.setContentsMargins(15, 15, 15, 15)
+        main_layout.setSpacing(15)
+
+        # URL Input
+        url_group = QGroupBox("Video URL")
+        url_layout = QHBoxLayout(url_group)
+        self.url_input = QLineEdit()
+        self.url_input.setPlaceholderText("Paste video URL here...")
+        self.url_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        url_layout.addWidget(self.url_input)
+
+        # Download Options
+        options_group = QGroupBox("Download Options")
+        options_layout = QVBoxLayout(options_group)
         
-        self.setup_variables()
-        self.create_widgets()
-        self.toggle_resolution()
+        # Platform Selection
+        platform_layout = QHBoxLayout()
+        platform_layout.addWidget(QLabel("Platform:"))
+        self.platform_combo = QComboBox()
+        self.platform_combo.addItems(self.PLATFORMS)
+        self.platform_combo.setSizeAdjustPolicy(QComboBox.AdjustToContents)
+        platform_layout.addWidget(self.platform_combo, 1)
+        options_layout.addLayout(platform_layout)
 
-    def setup_variables(self):
-        self.url_var = tk.StringVar()
-        self.platform_var = tk.StringVar(value='Auto-detect')
-        self.format_var = tk.StringVar(value=self.DEFAULT_FORMAT)
-        self.resolution_var = tk.StringVar(value=self.DEFAULT_RESOLUTION)
-        self.download_path_var = tk.StringVar()
+        # Format Selection
+        format_group = QGroupBox("Format")
+        format_layout = QHBoxLayout(format_group)
+        self.format_group = QButtonGroup(self)
+        for text, value in self.FORMATS:
+            rb = QRadioButton(text)
+            rb.setProperty('format', value)
+            format_layout.addWidget(rb)
+            self.format_group.addButton(rb)
+        self.format_group.buttons()[0].setChecked(True)
+        options_layout.addWidget(format_group)
 
-    def create_widgets(self):
-        #Set up style
-        style = ttk.Style()
-        style.configure('TLabel', padding=5)
-        style.configure('TButton', padding=5)
-        style.configure('TRadiobutton', padding=5)
+        # Resolution Selection
+        resolution_layout = QHBoxLayout()
+        resolution_layout.addWidget(QLabel("Resolution:"))
+        self.resolution_combo = QComboBox()
+        self.resolution_combo.addItems(self.RESOLUTIONS)
+        self.resolution_combo.setSizeAdjustPolicy(QComboBox.AdjustToContents)
+        resolution_layout.addWidget(self.resolution_combo, 1)
+        options_layout.addLayout(resolution_layout)
 
-        #Create frame
-        self.create_url_frame()
-        self.create_options_frame()
-        self.create_path_frame()
-        self.create_button_frame()
-        self.create_status_frame()
+        # Download Path
+        path_group = QGroupBox("Download Location")
+        path_layout = QHBoxLayout(path_group)
+        self.path_input = QLineEdit()
+        self.path_input.setReadOnly(True)
+        self.path_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        browse_btn = QPushButton("Browse...")
+        browse_btn.clicked.connect(self.browse_directory)
+        path_layout.addWidget(self.path_input)
+        path_layout.addWidget(browse_btn)
 
-    def create_url_frame(self):
-        frame = ttk.LabelFrame(self.root, text="Video URL", padding=10)
-        frame.grid(row=0, column=0, padx=10, pady=5, sticky='ew')
+        # Control Buttons
+        button_layout = QHBoxLayout()
+        button_layout.addStretch(1)
+        self.clear_btn = QPushButton("Clear All")
+        self.download_btn = QPushButton("Start Download")
+        button_layout.addWidget(self.clear_btn)
+        button_layout.addWidget(self.download_btn)
 
-        ttk.Label(frame, text="URL:").grid(row=0, column=0, sticky='w')
-        url_entry = ttk.Entry(frame, textvariable=self.url_var, width=50)
-        url_entry.grid(row=0, column=1, columnspan=2, sticky='ew', padx=5)
-        url_entry.focus_set()
+        # Status Output
+        status_group = QGroupBox("Download Status")
+        status_layout = QVBoxLayout(status_group)
+        self.status_output = QTextEdit()
+        self.status_output.setReadOnly(True)
+        self.status_output.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        status_layout.addWidget(self.status_output)
 
-    def create_options_frame(self):
-        frame = ttk.LabelFrame(self.root, text="Download Options", padding=10)
-        frame.grid(row=1, column=0, padx=10, pady=5, sticky='ew')
+        # Assemble main layout
+        main_layout.addWidget(url_group)
+        main_layout.addWidget(options_group)
+        main_layout.addWidget(path_group)
+        main_layout.addLayout(button_layout)
+        main_layout.addWidget(status_group, 1)
 
-        #Platform
-        ttk.Label(frame, text="Platform:").grid(row=0, column=0, sticky='w')
-        self.platform_combobox = ttk.Combobox(
-            frame, textvariable=self.platform_var, values=self.PLATFORMS, state='readonly')
-        self.platform_combobox.grid(row=0, column=1, sticky='ew', padx=5, pady=2)
+    def setup_signals(self):
+        self.clear_btn.clicked.connect(self.clear_fields)
+        self.download_btn.clicked.connect(self.start_download)
+        self.format_group.buttonClicked.connect(self.toggle_resolution)
 
-        #Format
-        ttk.Label(frame, text="Format:").grid(row=1, column=0, sticky='w')
-        for i, (text, value) in enumerate(self.FORMATS):
-            rb = ttk.Radiobutton(
-                frame, text=text, variable=self.format_var, 
-                value=value, command=self.toggle_resolution)
-            rb.grid(row=1, column=i+1, sticky='w', padx=5)
-
-        #Resolution
-        ttk.Label(frame, text="Resolution:").grid(row=2, column=0, sticky='w')
-        self.resolution_combobox = ttk.Combobox(
-            frame, textvariable=self.resolution_var, values=self.RESOLUTIONS, state='readonly')
-        self.resolution_combobox.grid(row=2, column=1, sticky='ew', padx=5, pady=2)
-
-    def create_path_frame(self):
-        frame = ttk.LabelFrame(self.root, text="Download Path", padding=10)
-        frame.grid(row=2, column=0, padx=10, pady=5, sticky='ew')
-
-        ttk.Label(frame, text="Path:").grid(row=0, column=0, sticky='w')
-        path_entry = ttk.Entry(frame, textvariable=self.download_path_var, width=40)
-        path_entry.grid(row=0, column=1, sticky='ew', padx=5)
-        ttk.Button(frame, text="Browse", command=self.browse_directory).grid(row=0, column=2, padx=5)
-
-    def create_button_frame(self):
-        frame = ttk.Frame(self.root)
-        frame.grid(row=3, column=0, padx=10, pady=10, sticky='e')
-
-        ttk.Button(frame, text="Clear", command=self.clear_fields).pack(side='left', padx=5)
-        self.download_button = ttk.Button(frame, text="Download", command=self.start_download)
-        self.download_button.pack(side='left', padx=5)
-
-    def create_status_frame(self):
-        frame = ttk.LabelFrame(self.root, text="Status", padding=10)
-        frame.grid(row=4, column=0, padx=10, pady=5, sticky='nsew')
-
-        self.status_text = tk.Text(frame, height=10, width=70, wrap='word')
-        scrollbar = ttk.Scrollbar(frame, orient='vertical', command=self.status_text.yview)
-        self.status_text.configure(yscrollcommand=scrollbar.set)
+    def resizeEvent(self, event):
+        width = self.width()
+        # Dynamic button text
+        if width < 600:
+            self.clear_btn.setText("🗑 Clear")
+            self.download_btn.setText("↓ Download")
+        else:
+            self.clear_btn.setText("Clear All")
+            self.download_btn.setText("Start Download")
         
-        self.status_text.grid(row=0, column=0, sticky='nsew')
-        scrollbar.grid(row=0, column=1, sticky='ns')
+        # Dynamic font size
+        base_size = max(10, min(14, int(width / 80)))
+        self.setStyleSheet(f"""
+            * {{ font-size: {base_size}px; }}
+            QPushButton {{ min-width: {base_size * 8}px; }}
+        """)
+        super().resizeEvent(event)
 
     def toggle_resolution(self):
-        state = 'normal' if self.format_var.get() == 'mp4' else 'disabled'
-        self.resolution_combobox.config(state=state)
+        enabled = self.format_group.checkedButton().property('format') == 'mp4'
+        self.resolution_combo.setEnabled(enabled)
 
     def browse_directory(self):
-        directory = filedialog.askdirectory()
+        directory = QFileDialog.getExistingDirectory(self, "Select Download Directory")
         if directory:
-            self.download_path_var.set(directory)
+            self.download_path = directory
+            self.path_input.setText(directory)
 
     def clear_fields(self):
-        self.url_var.set('')
-        self.platform_var.set('Auto-detect')
-        self.format_var.set(self.DEFAULT_FORMAT)
-        self.resolution_var.set(self.DEFAULT_RESOLUTION)
-        self.download_path_var.set('')
-        self.status_text.delete('1.0', tk.END)
-        self.update_status("Fields cleared. Ready for new download.")
+        self.url_input.clear()
+        self.platform_combo.setCurrentIndex(0)
+        self.format_group.buttons()[0].setChecked(True)
+        self.resolution_combo.setCurrentIndex(0)
+        self.path_input.clear()
+        self.status_output.clear()
         self.toggle_resolution()
 
     def validate_inputs(self):
-        url = self.url_var.get().strip()
-        if not url:
-            messagebox.showerror("Error", "Please enter a valid URL.")
+        if not self.url_input.text().strip():
+            QMessageBox.critical(self, "Error", "Please enter a valid URL!")
             return False
-        
-        if not self.download_path_var.get():
-            messagebox.showerror("Error", "Please select a download directory.")
+        if not self.path_input.text().strip():
+            QMessageBox.critical(self, "Error", "Please select a download directory!")
             return False
-            
-        if self.format_var.get() == 'mp4':
+        if self.format_group.checkedButton().property('format') == 'mp4':
             ffmpeg_path = self.get_ffmpeg_path()
             if not os.path.isfile(ffmpeg_path):
-                messagebox.showerror("Error", "FFmpeg not found. Required for video processing.")
+                QMessageBox.critical(self, "Error", "FFmpeg not found. Required for video processing!")
                 return False
-                
         return True
 
     def get_ffmpeg_path(self):
@@ -152,49 +219,76 @@ class VideoDownloaderApp:
         if not self.validate_inputs():
             return
 
-        self.download_button.config(state='disabled')
-        threading.Thread(target=self.process_download, daemon=True).start()
+        self.download_btn.setEnabled(False)
+        self.worker = DownloadWorker(
+            self.url_input.text(),
+            self.platform_combo.currentText(),
+            self.format_group.checkedButton().property('format'),
+            self.resolution_combo.currentText(),
+            self.path_input.text(),
+            self.get_ffmpeg_path()
+        )
+        self.worker.signals.update_progress.connect(self.update_status)
+        self.worker.signals.download_complete.connect(self.download_complete)
+        self.worker.signals.error_occurred.connect(self.handle_error)
+        
+        self.download_thread = threading.Thread(target=self.worker.run)
+        self.download_thread.start()
 
-    def process_download(self):
+    def update_status(self, message):
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        self.status_output.append(f"[{timestamp}] {message}")
+        self.status_output.ensureCursorVisible()
+
+    def download_complete(self):
+        self.download_btn.setEnabled(True)
+        QMessageBox.information(self, "Success", "Download completed successfully!")
+        self.open_download_directory()
+
+    def handle_error(self, message):
+        self.download_btn.setEnabled(True)
+        QMessageBox.critical(self, "Error", message)
+
+    def open_download_directory(self):
+        path = self.path_input.text()
+        if os.path.isdir(path):
+            try:
+                os.startfile(path)
+            except AttributeError:
+                self.update_status(f"Download directory: {path}")
+
+class DownloadWorker:
+    def __init__(self, url, platform, format, resolution, path, ffmpeg_path):
+        self.url = url
+        self.platform = platform
+        self.format = format
+        self.resolution = resolution
+        self.path = path
+        self.ffmpeg_path = ffmpeg_path
+        self.signals = DownloadSignals()
+
+    def run(self):
         try:
-            url = self.url_var.get().strip()
-            platform = self.detect_platform(url)
-            options = self.build_ydl_options()
-            
-            self.update_status(f"Starting download from {platform}...")
+            options = self.build_options()
             
             with yt_dlp.YoutubeDL(options) as ydl:
-                ydl.download([url])
+                ydl.download([self.url])
                 
-            self.update_status("Download completed successfully!")
-            self.open_download_directory()
-            
+            self.signals.download_complete.emit()
         except Exception as e:
-            self.update_status(f"Error: {str(e)}")
-        finally:
-            self.root.after(0, lambda: self.download_button.config(state='normal'))
+            self.signals.error_occurred.emit(str(e))
 
-    def detect_platform(self, url):
-        if self.platform_var.get() != 'Auto-detect':
-            return self.platform_var.get()
-            
-        url_lower = url.lower()
-        for platform in self.PLATFORMS[1:]:  # Skip Auto-detect
-            if platform.lower() in url_lower:
-                return platform
-        return 'Unknown Platform'
-
-    def build_ydl_options(self):
+    def build_options(self):
         options = {
-            'outtmpl': os.path.join(self.download_path_var.get(), '%(title)s.%(ext)s'),
-            'ffmpeg_location': self.get_ffmpeg_path(),
+            'outtmpl': os.path.join(self.path, '%(title)s.%(ext)s'),
+            'ffmpeg_location': self.ffmpeg_path,
             'progress_hooks': [self.progress_hook],
             'noplaylist': True,
             'quiet': True,
             'no_warnings': False,
         }
 
-        if self.format_var.get() == 'mp3':
+        if self.format == 'mp3':
             options.update({
                 'format': 'bestaudio/best',
                 'postprocessors': [{
@@ -204,44 +298,26 @@ class VideoDownloaderApp:
                 }],
             })
         else:
-            res = self.resolution_var.get()
-            options['format'] = self.get_video_format(res)
+            options['format'] = self.get_video_format()
 
         return options
 
-    def get_video_format(self, resolution):
-        if resolution == 'Best available':
+    def get_video_format(self):
+        if self.resolution == 'Best available':
             return 'bestvideo+bestaudio/best'
-        height = int(resolution.replace('p', ''))
+        height = int(self.resolution.replace('p', ''))
         return f'bestvideo[height<={height}]+bestaudio/best[height<={height}]'
 
     def progress_hook(self, d):
         if d['status'] == 'downloading':
             percent = d.get('_percent_str', 'N/A').strip()
             speed = d.get('_speed_str', 'N/A').strip()
-            self.update_status(f"Progress: {percent} | Speed: {speed}")
+            self.signals.update_progress.emit(f"Progress: {percent} | Speed: {speed}")
         elif d['status'] == 'finished':
-            self.update_status("Post-processing...")
-
-    def update_status(self, message):
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        self.root.after(0, lambda: self.status_text.insert(
-            tk.END, f"[{timestamp}] {message}\n"))
-        self.root.after(0, lambda: self.status_text.see(tk.END))
-
-    def open_download_directory(self):
-        path = self.download_path_var.get()
-        if path and os.path.isdir(path):
-            try:
-                os.startfile(path)
-            except AttributeError:
-                messagebox.showinfo("Download Complete", f"Files saved in: {path}")
-
-    def on_closing(self):
-        if messagebox.askokcancel("Quit", "Do you want to quit?"):
-            self.root.destroy()
+            self.signals.update_progress.emit("Post-processing...")
 
 if __name__ == "__main__":
-    root = tk.Tk()
-    app = VideoDownloaderApp(root)
-    root.mainloop()
+    app = QApplication(sys.argv)
+    window = VideoDownloader()
+    window.show()
+    sys.exit(app.exec())
