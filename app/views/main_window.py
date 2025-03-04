@@ -1,18 +1,15 @@
-import sys
 import os
 import threading
 from datetime import datetime
-from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-                               QLabel, QLineEdit, QComboBox, QRadioButton, QGroupBox,
-                               QPushButton, QTextEdit, QFileDialog, QMessageBox, QButtonGroup,
-                               QSizePolicy, QScrollArea)
-from PySide6.QtCore import Qt, QObject, Signal, QSize
-import yt_dlp
-
-class DownloadSignals(QObject):
-    update_progress = Signal(str)
-    download_complete = Signal()
-    error_occurred = Signal(str)
+from PySide6.QtWidgets import (
+    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
+    QComboBox, QRadioButton, QGroupBox, QPushButton, QTextEdit, QFileDialog,
+    QMessageBox, QButtonGroup, QSizePolicy
+)
+from PySide6.QtCore import Qt, QSize
+from app.core.downloader import DownloadWorker, DownloadSignals
+from app.utils.styles import MAIN_WINDOW_STYLES
+from app.utils.helpers import get_ffmpeg_path
 
 class VideoDownloader(QMainWindow):
     PLATFORMS = ['Auto-detect', 'YouTube', 'Facebook', 'TikTok', 'Twitter']
@@ -27,47 +24,7 @@ class VideoDownloader(QMainWindow):
         self.setup_signals()
         self.download_thread = None
         self.download_path = ""
-        self.setup_styles()
-
-    def setup_styles(self):
-        self.setStyleSheet("""
-            QMainWindow {
-                background-color: #f5f6fa;
-            }
-            QGroupBox {
-                border: 1px solid #dcdde1;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding: 15px 5px 5px 5px;
-                font-weight: bold;
-                color: #2f3640;
-            }
-            QLineEdit, QComboBox, QTextEdit {
-                border: 1px solid #dcdde1;
-                border-radius: 4px;
-                padding: 5px;
-                background: white;
-            }
-            QPushButton {
-                background-color: #487eb0;
-                color: white;
-                border: none;
-                padding: 8px 16px;
-                border-radius: 4px;
-                min-width: 80px;
-            }
-            QPushButton:hover {
-                background-color: #40739e;
-            }
-            QPushButton:disabled {
-                background-color: #dcdde1;
-                color: #7f8fa6;
-            }
-            QTextEdit {
-                background-color: #ffffff;
-                font-family: monospace;
-            }
-        """)
+        self.setStyleSheet(MAIN_WINDOW_STYLES)
 
     def setup_ui(self):
         central_widget = QWidget()
@@ -145,7 +102,6 @@ class VideoDownloader(QMainWindow):
         self.status_output.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         status_layout.addWidget(self.status_output)
 
-        # Assemble main layout
         main_layout.addWidget(url_group)
         main_layout.addWidget(options_group)
         main_layout.addWidget(path_group)
@@ -159,7 +115,6 @@ class VideoDownloader(QMainWindow):
 
     def resizeEvent(self, event):
         width = self.width()
-        # Dynamic button text
         if width < 600:
             self.clear_btn.setText("🗑 Clear")
             self.download_btn.setText("↓ Download")
@@ -167,12 +122,8 @@ class VideoDownloader(QMainWindow):
             self.clear_btn.setText("Clear All")
             self.download_btn.setText("Start Download")
         
-        # Dynamic font size
         base_size = max(10, min(14, int(width / 80)))
-        self.setStyleSheet(f"""
-            * {{ font-size: {base_size}px; }}
-            QPushButton {{ min-width: {base_size * 8}px; }}
-        """)
+        self.setStyleSheet(f"* {{ font-size: {base_size}px; }} QPushButton {{ min-width: {base_size * 8}px; }}")
         super().resizeEvent(event)
 
     def toggle_resolution(self):
@@ -202,18 +153,11 @@ class VideoDownloader(QMainWindow):
             QMessageBox.critical(self, "Error", "Please select a download directory!")
             return False
         if self.format_group.checkedButton().property('format') == 'mp4':
-            ffmpeg_path = self.get_ffmpeg_path()
+            ffmpeg_path = get_ffmpeg_path()
             if not os.path.isfile(ffmpeg_path):
                 QMessageBox.critical(self, "Error", "FFmpeg not found. Required for video processing!")
                 return False
         return True
-
-    def get_ffmpeg_path(self):
-        if getattr(sys, 'frozen', False):
-            base_path = sys._MEIPASS
-        else:
-            base_path = os.path.dirname(os.path.abspath(__file__))
-        return os.path.join(base_path, 'ffmpeg.exe')
 
     def start_download(self):
         if not self.validate_inputs():
@@ -226,7 +170,7 @@ class VideoDownloader(QMainWindow):
             self.format_group.checkedButton().property('format'),
             self.resolution_combo.currentText(),
             self.path_input.text(),
-            self.get_ffmpeg_path()
+            get_ffmpeg_path()
         )
         self.worker.signals.update_progress.connect(self.update_status)
         self.worker.signals.download_complete.connect(self.download_complete)
@@ -256,68 +200,3 @@ class VideoDownloader(QMainWindow):
                 os.startfile(path)
             except AttributeError:
                 self.update_status(f"Download directory: {path}")
-
-class DownloadWorker:
-    def __init__(self, url, platform, format, resolution, path, ffmpeg_path):
-        self.url = url
-        self.platform = platform
-        self.format = format
-        self.resolution = resolution
-        self.path = path
-        self.ffmpeg_path = ffmpeg_path
-        self.signals = DownloadSignals()
-
-    def run(self):
-        try:
-            options = self.build_options()
-            
-            with yt_dlp.YoutubeDL(options) as ydl:
-                ydl.download([self.url])
-                
-            self.signals.download_complete.emit()
-        except Exception as e:
-            self.signals.error_occurred.emit(str(e))
-
-    def build_options(self):
-        options = {
-            'outtmpl': os.path.join(self.path, '%(title)s.%(ext)s'),
-            'ffmpeg_location': self.ffmpeg_path,
-            'progress_hooks': [self.progress_hook],
-            'noplaylist': True,
-            'quiet': True,
-            'no_warnings': False,
-        }
-
-        if self.format == 'mp3':
-            options.update({
-                'format': 'bestaudio/best',
-                'postprocessors': [{
-                    'key': 'FFmpegExtractAudio',
-                    'preferredcodec': 'mp3',
-                    'preferredquality': '192',
-                }],
-            })
-        else:
-            options['format'] = self.get_video_format()
-
-        return options
-
-    def get_video_format(self):
-        if self.resolution == 'Best available':
-            return 'bestvideo+bestaudio/best'
-        height = int(self.resolution.replace('p', ''))
-        return f'bestvideo[height<={height}]+bestaudio/best[height<={height}]'
-
-    def progress_hook(self, d):
-        if d['status'] == 'downloading':
-            percent = d.get('_percent_str', 'N/A').strip()
-            speed = d.get('_speed_str', 'N/A').strip()
-            self.signals.update_progress.emit(f"Progress: {percent} | Speed: {speed}")
-        elif d['status'] == 'finished':
-            self.signals.update_progress.emit("Post-processing...")
-
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    window = VideoDownloader()
-    window.show()
-    sys.exit(app.exec())

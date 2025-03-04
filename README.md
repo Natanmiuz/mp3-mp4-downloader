@@ -47,6 +47,11 @@ Welcome to **NONET**, the graphical tool that lets you download videos and audio
 5. **Start the download**  
    - Click **Download** and watch the progress in real time.  
      
+---
+## Requisitos previos
+- Descarga FFmpeg para tu sistema operativo desde [https://ffmpeg.org](https://ffmpeg.org).
+- Coloca el ejecutable `ffmpeg` (o `ffmpeg.exe`) en la carpeta `binaries/`.
+---
 
 ---
 
