@@ -4,3 +4,5 @@ __pycache__/
 binaries/
 build/
 NOTNET.spec
+ffmpeg/
+descargas
