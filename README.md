@@ -1,299 +1,207 @@
-# NONET: Multi-Platform Media Downloader 🎥🔽
+<div align="center">
 
-![Python](https://img.shields.io/badge/Python-3.8%2B-blue)  
-![License](https://img.shields.io/badge/License-MIT-green)  
-![Platform](https://img.shields.io/badge/Platform-Windows-lightgrey)  
-![Status](https://img.shields.io/badge/Status-Active-success)  
+# NOTNET — Multi-Platform Media Downloader
 
-**NONET** is a feature-rich graphical tool for downloading videos and audios from YouTube, Facebook, TikTok, Twitter, Instagram, and virtually any website. Simple, intuitive, and powered by `yt_dlp`.
+**A Windows desktop app to download videos and audio from YouTube, Facebook, TikTok, Twitter, Instagram and hundreds of other sites**, powered by [yt-dlp](https://github.com/yt-dlp/yt-dlp).
 
----
+![Python](https://img.shields.io/badge/Python-3.13-3776AB?style=flat-square&logo=python&logoColor=white)
+![Platform](https://img.shields.io/badge/Platform-Windows-0078D6?style=flat-square&logo=windows&logoColor=white)
+![GUI](https://img.shields.io/badge/UI-PySide6-41CD52?style=flat-square&logo=qt&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-31A053?style=flat-square)
 
-## Table of Contents
-1. [Quick Start](#quick-start)
-2. [Features](#features)
-3. [Installation](#installation)
-4. [Usage](#usage)
-   - [GUI Mode](#gui-mode)
-   - [CLI Mode](#cli-mode)
-5. [Requirements](#requirements)
-6. [Build from Source](#build-from-source)
-7. [Development](#development)
-8. [Legal Notice](#legal-notice)
+[Overview](#overview) • [Features](#features) • [Quick start](#quick-start) • [Usage](#usage) • [HTTP API](#http-api) • [Build from source](#build-from-source) • [Project structure](#project-structure) • [Troubleshooting](#troubleshooting)
 
----
+</div>
 
-## Quick Start
+## Overview
 
-### 1. Prerequisites
-- **Windows 7+**
-- **Python 3.8+** (for running from source)
-- **FFmpeg** (required for audio conversion)
+Paste a link, pick a format, and hit download. NOTNET handles the rest — extracting the best available stream and saving it as **MP4 video** or **MP3 audio** (192 kbps).
 
-### 2. Get FFmpeg
-FFmpeg is required for audio processing and is **not** included in the package.
+It ships with three surfaces for the same core engine:
 
-**Download FFmpeg:**
-1. Visit [https://ffmpeg.org/download.html](https://ffmpeg.org/download.html)
-2. Download the Windows build (full or static version)
-3. Extract the folder and place `ffmpeg.exe` in the `binaries/` directory of NONET
+- **GUI** — a modern dark PySide6 desktop app with live progress (percent, speed, ETA) and a detail log.
+- **CLI** — a scriptable command-line interface for automation.
+- **HTTP API** — a minimal local server for integration and automated testing.
 
-**Verify FFmpeg:**
-```bash
-binaries/ffmpeg.exe -version
+## Features
+
+- **Multi-platform**: works with YouTube, Facebook, TikTok, Twitter, Instagram and virtually any site supported by yt-dlp.
+- **MP4 video** with resolution control: 360p, 480p, 720p, 1080p or best available.
+- **MP3 audio** extracted at 192 kbps via FFmpeg.
+- **Smart platform detection**, or pick a source manually (use *Any Website* as a generic fallback).
+- **Real-time progress**: percentage, speed and ETA without freezing the UI (downloads run on a background thread).
+- **Portable executable**: single `.exe` build with PyInstaller, no installation required.
+
+## Quick start
+
+### Prerequisites
+
+- **Windows 7 or later**
+- **Python 3.13** (only when running from source)
+- **FFmpeg** — required for MP3 audio extraction and MP4 video merging
+
+> [!IMPORTANT]
+> FFmpeg is **not** bundled with the app. You must download it and place `ffmpeg.exe` in the `binaries/` folder next to the executable or repo root.
+
+### 1. Get FFmpeg
+
+1. Download a Windows build from [ffmpeg.org](https://ffmpeg.org/download.html) (a static "release essentials" build is fine).
+2. Extract the archive and copy `ffmpeg.exe` into the `binaries/` folder:
+
+```text
+binaries/
+└── ffmpeg.exe
 ```
 
-### 3. Run the Application
+3. Verify it works:
 
-**Option A: Executable (Recommended)**
-- Download `NONET.exe` from the [releases page](https://github.com/your-username/NONET/releases)
-- Double-click to run (no installation required)
-
-**Option B: From Source**
-```bash
-# Clone or download the repository
-git clone https://github.com/your-username/NONET.git
-cd NONET
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Run the GUI
-python main.py
-
-# Or run CLI
-python cli/main_cli.py --help
+```powershell
+binaries\ffmpeg.exe -version
 ```
 
----
+### 2. Run the app
 
-## Features ✅
+**Option A — Portable executable**
 
-- 🎯 **Smart Platform Detection**: Recognizes YouTube, Facebook, TikTok, Twitter, Instagram, and more
-- 🌐 **Universal Downloader**: Download from virtually any website with video content
-- 📥 **Flexible Output**: MP4 (video) or MP3 (audio) with quality selection
-- 🎛️ **Quality Control**: Choose resolution (360p–1080p) or auto-select best available
-- 🖥️ **Dual Interface**: Modern GUI or powerful CLI for automation
-- 📊 **Real-time Progress**: Track download speed, ETA, and completion percentage
-- ✅ **Error Handling**: Clear feedback on download status with success/error notifications
-- 🚀 **Portable**: No installation needed—self-contained executable
+Download `notnet.exe` from the [Releases](https://github.com/Natanmiuz/mp3-mp4-downloader/releases) page and double-click it.
 
----
-
-## Installation
-
-### From Executable (Windows)
-
-1. Download the latest `NONET.exe` from [Releases](https://github.com/your-username/NONET/releases)
-2. Place `ffmpeg.exe` in a new `binaries/` folder next to the executable
-3. Run `NONET.exe`
-
-### From Source (Development)
+**Option B — From source**
 
 ```bash
-# Clone the repository
-git clone https://github.com/your-username/NONET.git
-cd NONET
+git clone https://github.com/Natanmiuz/mp3-mp4-downloader.git
+cd mp3-mp4-downloader
 
-# Create a virtual environment (recommended)
 python -m venv venv
 venv\Scripts\activate
 
-# Install dependencies
 pip install -r requirements.txt
 
-# Run the application
+# Launch the GUI
 python main.py
 ```
 
----
+> [!NOTE]
+> The CLI prints progress in **Spanish**, while the GUI uses **English** — this is intentional and matches each surface.
 
 ## Usage
 
-### GUI Mode
+### GUI
 
-1. **Paste the URL**
-   - Copy and paste the video/audio link into the URL field
+1. Paste a video or audio URL.
+2. Choose a **source** (Auto-detect is the default; pick *Any Website* for a generic download — resolution selection is disabled then).
+3. Choose a **format**:
+   - **Video (MP4)** — optionally set the resolution (360p–1080p or *Best available*).
+   - **Audio (MP3)** — 192 kbps, resolution is not applicable.
+4. Click **Browse** to pick the destination folder.
+5. Click **Download** and watch the progress. When finished, the destination folder opens automatically.
 
-2. **Select Platform** (auto-detection available)
-   - **Auto-detect**: Automatic recognition
-   - **YouTube, Facebook, TikTok, Twitter, Instagram**: Specific platform
-   - **Any Website**: Generic downloader for other sources
+### CLI
 
-3. **Choose Format**
-   - **MP4**: Video download (you can select quality)
-   - **MP3**: Audio-only download (192 kbps)
-
-4. **Select Resolution** (MP4 only)
-   - **360p, 480p, 720p, 1080p**: Fixed resolution
-   - **Best available**: Highest quality available
-   - *(Disabled for "Any Website" option)*
-
-5. **Choose Download Location**
-   - Click **Browse...** and select the destination folder
-
-6. **Start Download**
-   - Click **Start Download** and monitor progress in real time
-
-### CLI Mode
-
-The CLI provides a command-line interface for automation and scripting.
-
-**Basic Usage:**
 ```bash
 python cli/main_cli.py <URL> [OPTIONS]
 ```
 
-**Examples:**
+| Option | Description | Default |
+|---|---|---|
+| `<URL>` | Video or audio URL (optional; interactive prompt if omitted) | — |
+| `-f, --format <mp3\|mp4>` | Output format | `mp4` |
+| `-o, --output <PATH>` | Output directory | `./descargas` |
+| `--ffmpeg <PATH>` | Path to the FFmpeg executable | `ffmpeg` (PATH lookup) |
+| `--help` | Show help | — |
 
 ```bash
-# Download as MP4 (default)
-python cli/main_cli.py "https://www.youtube.com/watch?v=example"
+# Download video as MP4 (default)
+python cli/main_cli.py "https://www.youtube.com/watch?v=..."
 
-# Download as MP3
-python cli/main_cli.py "https://www.youtube.com/watch?v=example" -f mp3
+# Extract audio as MP3
+python cli/main_cli.py "https://www.youtube.com/watch?v=..." -f mp3
 
-# Specify output directory
-python cli/main_cli.py "https://www.youtube.com/watch?v=example" -o "./my_downloads"
-
-# Custom FFmpeg path
-python cli/main_cli.py "https://www.youtube.com/watch?v=example" --ffmpeg "C:\ffmpeg\ffmpeg.exe"
-
-# Interactive mode (if URL not provided)
-python cli/main_cli.py
+# Custom output folder and FFmpeg path
+python cli/main_cli.py "https://www.youtube.com/watch?v=..." -o "D:\downloads" --ffmpeg "C:\ffmpeg\bin\ffmpeg.exe"
 ```
 
-**Available Options:**
-```
--f, --format {mp3,mp4}    Output format (default: mp4)
--o, --output PATH         Output directory (default: ./descargas)
---ffmpeg PATH             FFmpeg executable path (default: ffmpeg)
---help                    Show help message
+## HTTP API
+
+A minimal JSON server for automation and testing. It reuses the same download engine as the CLI.
+
+```bash
+python web_server.py [PORT]        # defaults to 8000, binds 127.0.0.1
 ```
 
----
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/health` | Health check → `{"status": "ok"}` |
+| `GET` | `/` | Lists available endpoints |
+| `POST` | `/download` | Download a URL (`url`, `format`, optional `path` in JSON body) |
+
+```bash
+curl -X POST http://127.0.0.1:8000/download \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://www.youtube.com/watch?v=...", "format": "mp4"}'
+```
 
 ## Requirements
 
-### System Requirements
 - **OS**: Windows 7 or later
-- **RAM**: 512 MB minimum
-- **Disk Space**: Varies by video quality (100 MB–3 GB per download)
+- **Python**: 3.13 (source builds only)
+- **FFmpeg**: see [Quick start](#quick-start)
+- **Dependencies**: listed in `requirements.txt` — `PySide6 6.11`, `yt-dlp` (pinned), `shiboken6`
 
-### Software Dependencies
-- **Python 3.8+** (if running from source)
-- **FFmpeg** (required for audio/video processing)
+> [!TIP]
+> Platform changes (e.g. YouTube breaking changes) outpace older releases. If downloads start failing, upgrade yt-dlp first:
+> `pip install --upgrade yt-dlp`
 
-### Python Packages
-Listed in `requirements.txt`:
-- `PySide6`: GUI framework
-- `yt_dlp`: Core downloader engine
+## Build from source
 
----
-
-## Build from Source
-
-### Create Executable (PyInstaller)
+Build a portable single-file executable with PyInstaller:
 
 ```bash
-# Install PyInstaller
 pip install pyinstaller
-
-# Build the executable
-pyinstaller NONET.spec
-
-# The executable will be in the dist/ folder
+pyinstaller notnet.spec
 ```
 
-**Note:** Make sure `binaries/ffmpeg.exe` is included in the distribution for a fully portable executable.
+The executable is written to `dist/notnet.exe`. For a fully portable build, make sure `binaries/ffmpeg.exe` is present next to the exe (the spec bundles it automatically when it exists).
 
----
+## Project structure
 
-## Development
-
-### Project Structure
-```
-NONET/
-├── main.py                    # GUI entry point
+```text
+mp3-mp4-downloader/
+├── main.py                  # GUI entry point
+├── web_server.py            # HTTP API entry point (testing / automation)
 ├── cli/
-│   └── main_cli.py           # CLI entry point
+│   └── main_cli.py          # CLI entry point + CLI Downloader
 ├── app/
 │   ├── core/
-│   │   └── downloader.py     # Core download logic
+│   │   └── downloader.py    # Shared download engine (Qt Signals + threads)
 │   ├── utils/
-│   │   ├── helpers.py        # Utility functions
-│   │   └── styles.py         # UI styling
+│   │   ├── helpers.py       # get_ffmpeg_path(), validate_url()
+│   │   └── styles.py        # GUI stylesheet (QSS)
 │   └── views/
-│       └── main_window.py    # GUI components
-├── binaries/                  # FFmpeg location
-├── requirements.txt           # Python dependencies
-├── README.md                  # This file
-└── .gitignore                # Git ignore rules
+│       └── main_window.py   # Main window (validation, UI, worker threads)
+├── binaries/                # ffmpeg.exe (required at runtime, gitignored)
+├── notnet.spec              # PyInstaller spec
+├── requirements.txt         # Pinned dependencies
+└── descargas/               # CLI default output folder (gitignored)
 ```
-
-### Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/your-feature`)
-3. Commit changes (`git commit -m 'Add feature'`)
-4. Push to the branch (`git push origin feature/your-feature`)
-5. Open a Pull Request
-
-### Testing
-
-Run the application in development mode:
-```bash
-python main.py          # GUI
-python cli/main_cli.py  # CLI
-```
-
----
 
 ## Troubleshooting
 
-### FFmpeg Not Found
-- Ensure `ffmpeg.exe` is in the `binaries/` folder
-- Or provide the full path: `--ffmpeg "C:\path\to\ffmpeg.exe"`
+**FFmpeg not found (MP4 download fails)**
 
-### Download Fails
-- Check internet connection
-- Verify the URL is valid and publicly accessible
-- Ensure sufficient disk space
-- Update yt_dlp: `pip install --upgrade yt_dlp`
+The GUI validates that `ffmpeg.exe` exists before starting an MP4 download. Place it in `binaries/`, or pass an explicit path in the CLI with `--ffmpeg`.
 
-### Permission Denied (CLI)
-On Windows, ensure the script execution policy allows it:
-```powershell
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
-```
+**Download fails mid-way**
 
----
+- Check your internet connection and that the URL is public.
+- Make sure there is enough free disk space.
+- Upgrade yt-dlp, as platforms frequently change: `pip install --upgrade yt-dlp`.
+- Re-check FFmpeg — MP3 extraction and MP4 merging both need it.
 
-## Legal Notice ⚠️
+**Something else**
 
-This software is provided for **personal, non-commercial use only**. Users are responsible for:
-- Respecting the Terms of Service of each platform
-- Complying with copyright and intellectual property laws
-- Not circumventing access controls or DRM protection
-- Obtaining proper permissions before downloading copyrighted content
+Open an [issue](https://github.com/Natanmiuz/mp3-mp4-downloader/issues) with the download URL, format and the output of the **Details** log panel (GUI) or the console output (CLI).
 
-The developer is not responsible for misuse of this tool.
+## Legal notice
 
----
-
-## License
-
-This project is licensed under the **MIT License**. See [LICENSE](LICENSE) for details.
-
----
-
-## Support
-
-For issues, feature requests, or questions:
-- Open an [Issue](https://github.com/your-username/NONET/issues)
-- Submit a [Pull Request](https://github.com/your-username/NONET/pulls)
-- Contact: your-email@example.com
-
----
-
-**Made with ❤️ for media enthusiasts**
+> [!WARNING]
+> This software is provided for **personal, non-commercial use only**. You are responsible for respecting the terms of service and copyright laws of each platform, and for obtaining proper permission before downloading content. Downloading DRM-protected or access-controlled content is not supported and is your responsibility to avoid.

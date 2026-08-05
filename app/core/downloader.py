@@ -5,6 +5,7 @@ import yt_dlp
 
 class DownloadSignals(QObject):
     update_progress = Signal(str)
+    progress_updated = Signal(float, str, str)
     download_complete = Signal()
     error_occurred = Signal(str)
 
@@ -61,9 +62,20 @@ class DownloadWorker:
         return f'bestvideo[height<={height}]+bestaudio/best[height<={height}]'
 
     def progress_hook(self, d):
-        if d['status'] == 'downloading':
-            percent = d.get('_percent_str', 'N/A').strip()
-            speed = d.get('_speed_str', 'N/A').strip()
-            self.signals.update_progress.emit(f"Progress: {percent} | Speed: {speed}")
-        elif d['status'] == 'finished':
+        status = d.get('status')
+        if status == 'downloading':
+            total = d.get('total_bytes') or d.get('total_bytes_estimate')
+            downloaded = d.get('downloaded_bytes') or 0
+            percent = (downloaded / total * 100) if total else -1.0
+            speed = (d.get('_speed_str') or '').strip()
+            eta = (d.get('_eta_str') or '').strip()
+            line = f"Progress: {(d.get('_percent_str') or 'N/A').strip()} | Speed: {speed}"
+            if eta:
+                line += f" | ETA: {eta}"
+            self.signals.update_progress.emit(line)
+            self.signals.progress_updated.emit(percent, speed, eta)
+        elif status == 'finished':
             self.signals.update_progress.emit("Post-processing...")
+            self.signals.progress_updated.emit(100.0, "", "")
+        elif status == 'error':
+            self.signals.update_progress.emit("Download error detected.")
