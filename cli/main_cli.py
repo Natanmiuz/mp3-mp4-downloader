@@ -5,6 +5,9 @@ import argparse
 from datetime import datetime
 import yt_dlp
 
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+
 class Downloader:
     def __init__(self, url, format, path, ffmpeg_path):
         self.url = url
