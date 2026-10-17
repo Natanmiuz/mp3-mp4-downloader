@@ -88,4 +88,6 @@ Run PyInstaller from the repo root, which must not contain an `__init__.py`. Cod
 - **`requirements.txt` is UTF-16 LE with a BOM.** Preserve that encoding when editing it, or rewrite it deliberately. Current pin: `yt-dlp[default,curl-cffi]==2026.8.19`. The `curl-cffi` extra is required for TikTok (and is why the spec needs the DLL bundling above). When downloads break (e.g. YouTube 403s), bumping yt-dlp is the usual first fix.
 - Gitignored and local-only: `binaries/` (ffmpeg is required at runtime), `venv/`, `build/`, `dist/`, `descargas/` (CLI/API default output dir), and every `*.spec` except `notnet.spec`.
 - All downloaders use `noplaylist: True` and `outtmpl` `%(title)s.%(ext)s` in the output dir.
+- **Terms of use**: NOTNET is © Natanmiuz, free for personal, non-commercial use, with all other rights reserved. It is deliberately **not** MIT and has no LICENSE file. The same text appears in the README's legal notice and in the exe's `LegalCopyright` (`tools/build_assets.py`), so keep the two in sync.
+- `docs/images/` holds the README images. `icon.png` is `render_app_icon(256)`. `screenshot.png` is a capture of the real window with sample data. Retake it when the UI changes, and never show a real user path in it.
 - `AGENTS.md` duplicates some of this guidance for other agents. Keep the two in sync when facts change.

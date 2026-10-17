@@ -1,232 +1,175 @@
 <div align="center">
 
-# NOTNET — Multi-Platform Media Downloader
+<img src="docs/images/icon.png" alt="NOTNET icon" width="96">
 
-**A Windows desktop app to download videos and audio from YouTube, Facebook, TikTok, Twitter, Instagram and hundreds of other sites**, powered by [yt-dlp](https://github.com/yt-dlp/yt-dlp).
+# NOTNET
 
-![Python](https://img.shields.io/badge/Python-3.13-3776AB?style=flat-square&logo=python&logoColor=white)
-![Platform](https://img.shields.io/badge/Platform-Windows-0078D6?style=flat-square&logo=windows&logoColor=white)
-![GUI](https://img.shields.io/badge/UI-PySide6-41CD52?style=flat-square&logo=qt&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-31A053?style=flat-square)
+**Download video and audio from YouTube, TikTok, Instagram, Facebook, X and hundreds of other sites, as MP4 or MP3.**<br>
+A small Windows app powered by [yt-dlp](https://github.com/yt-dlp/yt-dlp) and FFmpeg.
 
-[Overview](#overview) • [Features](#features) • [Quick start](#quick-start) • [Usage](#usage) • [HTTP API](#http-api) • [Build from source](#build-from-source) • [Project structure](#project-structure) • [Troubleshooting](#troubleshooting)
+![Windows 10/11](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?style=flat-square&logo=windows&logoColor=white)
+![Python 3.13](https://img.shields.io/badge/Python-3.13-3776AB?style=flat-square&logo=python&logoColor=white)
+![PySide6](https://img.shields.io/badge/UI-PySide6%206.11-41CD52?style=flat-square&logo=qt&logoColor=white)
+![yt-dlp](https://img.shields.io/badge/engine-yt--dlp-FF0000?style=flat-square)
+
+[Features](#features) • [Getting started](#getting-started) • [Usage](#usage) • [Development](#development) • [Troubleshooting](#troubleshooting)
+
+<img src="docs/images/screenshot.png" alt="NOTNET downloading a video at 64%, showing the title, speed and time left" width="460">
 
 </div>
 
-## Overview
-
-Paste a link, pick a format, and hit download. NOTNET handles the rest — extracting the best available stream and saving it as **MP4 video** or **MP3 audio** (192 kbps).
-
-It ships with three surfaces for the same core engine:
-
-- **GUI** — a modern dark PySide6 desktop app with live progress (percent, speed, ETA) and a detail log.
-- **CLI** — a scriptable command-line interface for automation.
-- **HTTP API** — a minimal local server for integration and automated testing.
+Paste a link, pick **Video (MP4)** or **Audio (MP3)**, and press Download. NOTNET picks the best stream, merges or converts it with FFmpeg, and saves the file to your folder. The same engine is also available as a command-line tool and a small local HTTP API.
 
 ## Features
 
-- **Multi-platform**: works with YouTube, Facebook, TikTok, Twitter, Instagram and virtually any site supported by yt-dlp.
-- **MP4 video** with resolution control: 360p, 480p, 720p, 1080p or best available. Output is always an `.mp4` file.
-- **MP3 audio** extracted at 192 kbps via FFmpeg.
-- **Smart platform detection**: YouTube, TikTok, Instagram, Facebook and X links are recognized as you paste them. Any other site is tried as a generic download, and links pasted without `https://` are completed for you.
-- **Real-time progress**: stage, percentage, speed and ETA without freezing the UI (downloads run on a background thread).
-- **Cancel anytime** with the Cancel button or <kbd>Esc</kbd>. Partial files are removed.
-- **Remembers your choices**: folder, format and quality are kept between sessions. The default folder is your Downloads folder.
-- **Portable build**: unzip and run, no installation required. FFmpeg is included and the app opens in under a second.
-- **Parallel downloads** of HLS/DASH fragments (4 at a time), which speeds up sites such as X, Instagram and Facebook.
+- **Hundreds of sites**: YouTube, TikTok, Instagram, Facebook, X and almost any site [yt-dlp supports](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md).
+- **Real `.mp4` video** at the quality you choose (best available or 1080p down to 360p), and **MP3 audio** at 192 kbps.
+- **Link detection**: the app recognizes the platform as you paste, and completes links copied without `https://`.
+- **Clear progress**: stage, title, percentage, speed and time left, without freezing the window.
+- **Faster downloads** on HLS/DASH sites such as X, Instagram and Facebook, by downloading 4 fragments in parallel.
+- **Cancel anytime** with **Cancel** or <kbd>Esc</kbd>; partial files are cleaned up.
+- **Plain-language errors**, with the full log one click away in **Details**.
+- **Remembers your choices**: folder, format and quality persist between sessions.
+- **Portable**: unzip and run, nothing to install, and FFmpeg is included. The window opens in under a second.
 
-## Quick start
+## Getting started
 
-### Prerequisites
+### Download the app
 
-- **Windows 7 or later**
-- **Python 3.13** (only when running from source)
-- **FFmpeg** — required for MP3 audio extraction and MP4 video merging
+1. Download `notnet-<version>-win64.zip` from the [Releases](https://github.com/Natanmiuz/mp3-mp4-downloader/releases) page.
+2. Extract it anywhere, for example in your Documents folder.
+3. Run `notnet\notnet.exe`.
 
 > [!IMPORTANT]
-> The release zip already includes FFmpeg. FFmpeg is **not** stored in this repository, so to run from source or build the app yourself, download it and place `ffmpeg.exe` in the `binaries/` folder at the repo root.
+> Keep the `_internal` folder next to `notnet.exe`. It contains Python, Qt and FFmpeg, and the app won't start without it.
 
-### 1. Get FFmpeg
+### Run from source
 
-1. Download a Windows build from [ffmpeg.org](https://ffmpeg.org/download.html) (a static "release essentials" build is fine).
-2. Extract the archive and copy `ffmpeg.exe` into the `binaries/` folder:
+You need [Python 3.13](https://www.python.org/downloads/) and an FFmpeg build for Windows, such as the ones linked from [ffmpeg.org](https://ffmpeg.org/download.html).
 
-```text
-binaries/
-└── ffmpeg.exe
-```
+1. Clone the repository and install the dependencies:
 
-3. Verify it works:
+   ```powershell
+   git clone https://github.com/Natanmiuz/mp3-mp4-downloader.git
+   cd mp3-mp4-downloader
+   python -m venv venv
+   venv\Scripts\activate
+   pip install -r requirements.txt
+   ```
 
-```powershell
-binaries\ffmpeg.exe -version
-```
+2. Copy `ffmpeg.exe` into a `binaries` folder at the repository root, so you have `binaries\ffmpeg.exe`. It isn't stored in the repository.
+3. Start the app:
 
-### 2. Run the app
-
-**Option A — Portable build**
-
-Download `notnet-<version>-win64.zip` from the [Releases](https://github.com/Natanmiuz/mp3-mp4-downloader/releases) page, extract it anywhere, and run `notnet\notnet.exe`. Keep the `_internal` folder next to the exe, because it holds Qt, Python and FFmpeg. Third-party licenses are listed in `THIRD_PARTY_NOTICES.md` inside the folder.
-
-**Option B — From source**
-
-```bash
-git clone https://github.com/Natanmiuz/mp3-mp4-downloader.git
-cd mp3-mp4-downloader
-
-python -m venv venv
-venv\Scripts\activate
-
-pip install -r requirements.txt
-
-# Launch the GUI
-python main.py
-```
-
-> [!NOTE]
-> The CLI prints progress in **Spanish**, while the GUI uses **English** — this is intentional and matches each surface.
+   ```powershell
+   python main.py
+   ```
 
 ## Usage
 
-### GUI
+### Desktop app
 
-1. Paste a video or audio link. The line below the field confirms the detected platform, or tells you if the text isn't a link.
-2. Choose a **format**:
-   - **Video (MP4)**: optionally set the quality (*Best available* or 1080p–360p).
-   - **Audio (MP3)**: 192 kbps. Quality is not applicable.
-3. Check **Save to** (your Downloads folder by default) or click **Browse…** to change it.
-4. Click **Download** or press <kbd>Enter</kbd> and follow the progress. Press **Cancel** or <kbd>Esc</kbd> to stop.
-5. When it finishes, click **Show in folder** to open the file's location. If something fails, the panel explains why in plain language and **Details** shows the full log.
+1. Paste a link. The line below the field confirms the platform, or tells you if the text isn't a link.
+2. Choose **Video** or **Audio**. For video, you can also pick a quality.
+3. Check **Save to** (your Downloads folder by default), or click **Browse…** to change it.
+4. Press **Download** or <kbd>Enter</kbd>. Press **Cancel** or <kbd>Esc</kbd> to stop.
+5. When it finishes, click **Show in folder** to open the file's location.
 
-### CLI
+### Command line
 
-```bash
-python cli/main_cli.py <URL> [OPTIONS]
+```powershell
+python cli\main_cli.py <URL> [-f mp3|mp4] [-o FOLDER] [--ffmpeg PATH]
 ```
 
 | Option | Description | Default |
 |---|---|---|
-| `<URL>` | Video or audio URL (optional; interactive prompt if omitted) | — |
-| `-f, --format <mp3\|mp4>` | Output format | `mp4` |
-| `-o, --output <PATH>` | Output directory | `./descargas` |
-| `--ffmpeg <PATH>` | Path to the FFmpeg executable | `ffmpeg` (PATH lookup) |
-| `--help` | Show help | — |
+| `URL` | Link to download. If you leave it out, the CLI asks for it. | — |
+| `-f`, `--format` | `mp4` for video or `mp3` for audio. | `mp4` |
+| `-o`, `--output` | Output folder. | `./descargas` |
+| `--ffmpeg` | Path to `ffmpeg.exe`. | `ffmpeg` on your `PATH` |
 
-```bash
-# Download video as MP4 (default)
-python cli/main_cli.py "https://www.youtube.com/watch?v=..."
-
-# Extract audio as MP3
-python cli/main_cli.py "https://www.youtube.com/watch?v=..." -f mp3
-
-# Custom output folder and FFmpeg path
-python cli/main_cli.py "https://www.youtube.com/watch?v=..." -o "D:\downloads" --ffmpeg "C:\ffmpeg\bin\ffmpeg.exe"
+```powershell
+python cli\main_cli.py "https://www.youtube.com/watch?v=aqz-KE-bpKQ" -f mp3 --ffmpeg binaries\ffmpeg.exe
 ```
 
-## HTTP API
+> [!NOTE]
+> The command line prints its messages in Spanish; the desktop app is in English.
 
-A minimal JSON server for automation and testing. It reuses the same download engine as the CLI.
+### HTTP API
 
-```bash
-python web_server.py [PORT]        # defaults to 8000, binds 127.0.0.1
+A minimal local JSON server for automation and tests. It uses the same download options as the command line.
+
+```powershell
+python web_server.py 8000
 ```
 
-| Method | Endpoint | Description |
+| Method | Path | Description |
 |---|---|---|
-| `GET` | `/health` | Health check → `{"status": "ok"}` |
-| `GET` | `/` | Lists available endpoints |
-| `POST` | `/download` | Download a URL (`url`, `format`, optional `path` in JSON body) |
+| `GET` | `/health` | Returns `{"status": "ok", "service": "mp3-mp4-downloader"}` |
+| `GET` | `/` | Lists the endpoints. |
+| `POST` | `/download` | Downloads `url` as `format` (`mp3` or `mp4`) into an optional `path`. Returns `400` for invalid input and `500` if the download fails. |
 
-```bash
-curl -X POST http://127.0.0.1:8000/download \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://www.youtube.com/watch?v=...", "format": "mp4"}'
+```powershell
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/download -ContentType "application/json" `
+  -Body '{"url": "https://www.youtube.com/watch?v=aqz-KE-bpKQ", "format": "mp4"}'
 ```
 
-## Requirements
+The server only listens on `127.0.0.1`.
 
-- **OS**: Windows 7 or later
-- **Python**: 3.13 (source builds only)
-- **FFmpeg**: see [Quick start](#quick-start)
-- **Dependencies**: listed in `requirements.txt` — `PySide6 6.11`, `yt-dlp` (pinned), `shiboken6`
+## Development
 
-> [!TIP]
-> Platform changes (e.g. YouTube breaking changes) outpace older releases. If downloads start failing, upgrade yt-dlp first:
-> `pip install --upgrade yt-dlp`
+Build the portable app with PyInstaller from the repository root, with `binaries\ffmpeg.exe` in place:
 
-## Build from source
-
-Build the portable folder with PyInstaller, running it from the repo root:
-
-```bash
+```powershell
 pip install pyinstaller
-pyinstaller notnet.spec
+pyinstaller notnet.spec --noconfirm
 ```
 
-The build writes `dist/notnet/` (`notnet.exe` plus `_internal/`) and the release asset `dist/notnet-<version>-win64.zip`. Upload the zip to GitHub Releases; build output and FFmpeg never go into the repository. The spec:
+This creates `dist/notnet/`, with `notnet.exe` and `_internal/`, and the release asset `dist/notnet-<version>-win64.zip`. The build:
 
-- builds a folder instead of a single `.exe`. A one-file build would unpack about 370 MB (mostly FFmpeg) to `%TEMP%` on every launch, which took 8–10 s. The folder build opens in under a second.
-- requires `binaries/ffmpeg.exe` and bundles everything in `binaries/` into `_internal/binaries`. The build stops if FFmpeg is missing, or if the FFmpeg binary was built as `nonfree` (not redistributable).
-- leaves out the Qt modules the app doesn't use (OpenGL software renderer, Quick/QML, PDF, SVG, network, image-format plugins, translations).
-- generates the app icon, the Windows version info (from `__version__` in `app/__init__.py`) and `THIRD_PARTY_NOTICES.md` with a `licenses/` folder (FFmpeg, Qt/PySide6, Python and each bundled package), all through `tools/build_assets.py`.
-- enables Python UTF-8 mode and disables UPX compression, which reduces antivirus false positives.
+- generates the icon, the Windows version info (from `app/__init__.py`), and `THIRD_PARTY_NOTICES.md` with a `licenses/` folder;
+- stops if FFmpeg is missing, or if it's a non-redistributable (`nonfree`) build;
+- leaves out the Qt modules the app doesn't use.
 
-### Code signing (optional, manual)
-
-Unsigned executables trigger SmartScreen warnings. If you have a code-signing certificate, sign and timestamp the exe after building:
+To avoid SmartScreen warnings, sign `dist\notnet\notnet.exe` with a code-signing certificate before zipping:
 
 ```powershell
 signtool sign /fd SHA256 /a /tr http://timestamp.digicert.com /td SHA256 dist\notnet\notnet.exe
-signtool verify /pa /v dist\notnet\notnet.exe
 ```
 
-Sign before uploading, then recreate the zip, because the spec zips the folder at the end of the build.
-
-Always include an RFC 3161 timestamp (`/tr`). Without it, the signature stops being valid when the certificate expires.
-
-## Project structure
+<details>
+<summary>Project layout</summary>
 
 ```text
-mp3-mp4-downloader/
-├── main.py                  # GUI entry point
-├── web_server.py            # HTTP API entry point (testing / automation)
-├── cli/
-│   └── main_cli.py          # CLI entry point + CLI Downloader
-├── app/
-│   ├── core/
-│   │   └── downloader.py    # GUI download worker (QObject on a QThread, cancellable)
-│   ├── utils/
-│   │   ├── helpers.py       # ffmpeg path, URL checks, platform detection, error hints
-│   │   └── styles.py        # Colour + type tokens, QSS, app icon
-│   └── views/
-│       └── main_window.py   # Main window (form, progress panel, settings)
-├── binaries/                # ffmpeg.exe (required at runtime, gitignored)
-├── tools/
-│   └── build_assets.py      # Icon, version resource and third-party notices for the spec
-├── licenses/                # GPL-3.0 / LGPL-3.0 texts shipped with the build
-├── notnet.spec              # PyInstaller spec
-├── requirements.txt         # Pinned dependencies
-└── descargas/               # CLI default output folder (gitignored)
+main.py                  Desktop app entry point
+cli/main_cli.py          Command line (Spanish output)
+web_server.py            Local HTTP API
+app/core/downloader.py   Download worker that runs yt-dlp on a background thread
+app/views/main_window.py Main window
+app/utils/               Helpers, styles and icon
+tools/build_assets.py    Icon, version info and notices for the build
+notnet.spec              PyInstaller build definition
+licenses/                License texts shipped with the build
 ```
+
+</details>
 
 ## Troubleshooting
 
-**FFmpeg not found**
+**Windows shows "Windows protected your PC".** The app isn't code-signed. Click **More info** → **Run anyway**.
 
-The GUI checks that `ffmpeg.exe` exists before starting any download, since MP4 merging and MP3 extraction both need it. Place it in `binaries/`, or pass an explicit path in the CLI with `--ffmpeg`.
+**Downloads that used to work now fail.** Sites change often, and yt-dlp keeps up with them. Download the latest release, or if you run from source, upgrade yt-dlp:
 
-**Download fails mid-way**
+```powershell
+pip install --upgrade "yt-dlp[default,curl-cffi]"
+```
 
-- Check your internet connection and that the URL is public.
-- Make sure there is enough free disk space.
-- Upgrade yt-dlp, as platforms frequently change: `pip install --upgrade yt-dlp`.
-- Re-check FFmpeg — MP3 extraction and MP4 merging both need it.
+**"FFmpeg not found".** The release zip includes FFmpeg. When you run from source, check that `binaries\ffmpeg.exe` exists.
 
-**Something else**
-
-Open an [issue](https://github.com/Natanmiuz/mp3-mp4-downloader/issues) with the download URL, format and the output of the **Details** log panel (GUI) or the console output (CLI).
+**Something else?** Open an [issue](https://github.com/Natanmiuz/mp3-mp4-downloader/issues) with the link, the format, and the text from **Details**.
 
 ## Legal notice
 
 > [!WARNING]
-> This software is provided for **personal, non-commercial use only**. You are responsible for respecting the terms of service and copyright laws of each platform, and for obtaining proper permission before downloading content. Downloading DRM-protected or access-controlled content is not supported and is your responsibility to avoid.
+> NOTNET is © Natanmiuz. It is free for **personal, non-commercial use**, and all other rights are reserved. Bundled third-party components (FFmpeg, Qt/PySide6, yt-dlp and others) keep their own licenses, listed in `THIRD_PARTY_NOTICES.md` inside the app folder.
+>
+> You are responsible for following each site's terms of service and copyright law. Only download content you have the right to download. DRM-protected content is not supported.

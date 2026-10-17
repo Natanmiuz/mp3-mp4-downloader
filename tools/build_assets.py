@@ -75,7 +75,7 @@ def version_info(version=__version__):
         StringStruct('FileDescription', 'NOTNET Media Downloader'),
         StringStruct('FileVersion', version),
         StringStruct('InternalName', 'notnet'),
-        StringStruct('LegalCopyright', 'Copyright (c) Natanmiuz. MIT License.'),
+        StringStruct('LegalCopyright', 'Copyright (c) Natanmiuz. Personal, non-commercial use only.'),
         StringStruct('OriginalFilename', 'notnet.exe'),
         StringStruct('ProductName', 'NOTNET'),
         StringStruct('ProductVersion', version),
