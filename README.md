@@ -26,11 +26,14 @@ It ships with three surfaces for the same core engine:
 ## Features
 
 - **Multi-platform**: works with YouTube, Facebook, TikTok, Twitter, Instagram and virtually any site supported by yt-dlp.
-- **MP4 video** with resolution control: 360p, 480p, 720p, 1080p or best available.
+- **MP4 video** with resolution control: 360p, 480p, 720p, 1080p or best available. Output is always an `.mp4` file.
 - **MP3 audio** extracted at 192 kbps via FFmpeg.
-- **Smart platform detection**, or pick a source manually (use *Any Website* as a generic fallback).
-- **Real-time progress**: percentage, speed and ETA without freezing the UI (downloads run on a background thread).
-- **Portable executable**: single `.exe` build with PyInstaller, no installation required.
+- **Smart platform detection**: YouTube, TikTok, Instagram, Facebook and X links are recognized as you paste them. Any other site is tried as a generic download, and links pasted without `https://` are completed for you.
+- **Real-time progress**: stage, percentage, speed and ETA without freezing the UI (downloads run on a background thread).
+- **Cancel anytime** with the Cancel button or <kbd>Esc</kbd>. Partial files are removed.
+- **Remembers your choices**: folder, format and quality are kept between sessions. The default folder is your Downloads folder.
+- **Portable build**: unzip and run, no installation required. FFmpeg is included and the app opens in under a second.
+- **Parallel downloads** of HLS/DASH fragments (4 at a time), which speeds up sites such as X, Instagram and Facebook.
 
 ## Quick start
 
@@ -41,7 +44,7 @@ It ships with three surfaces for the same core engine:
 - **FFmpeg** — required for MP3 audio extraction and MP4 video merging
 
 > [!IMPORTANT]
-> FFmpeg is **not** bundled with the app. You must download it and place `ffmpeg.exe` in the `binaries/` folder next to the executable or repo root.
+> The release zip already includes FFmpeg. FFmpeg is **not** stored in this repository, so to run from source or build the app yourself, download it and place `ffmpeg.exe` in the `binaries/` folder at the repo root.
 
 ### 1. Get FFmpeg
 
@@ -61,9 +64,9 @@ binaries\ffmpeg.exe -version
 
 ### 2. Run the app
 
-**Option A — Portable executable**
+**Option A — Portable build**
 
-Download `notnet.exe` from the [Releases](https://github.com/Natanmiuz/mp3-mp4-downloader/releases) page and double-click it.
+Download `notnet-<version>-win64.zip` from the [Releases](https://github.com/Natanmiuz/mp3-mp4-downloader/releases) page, extract it anywhere, and run `notnet\notnet.exe`. Keep the `_internal` folder next to the exe, because it holds Qt, Python and FFmpeg. Third-party licenses are listed in `THIRD_PARTY_NOTICES.md` inside the folder.
 
 **Option B — From source**
 
@@ -87,13 +90,13 @@ python main.py
 
 ### GUI
 
-1. Paste a video or audio URL.
-2. Choose a **source** (Auto-detect is the default; pick *Any Website* for a generic download — resolution selection is disabled then).
-3. Choose a **format**:
-   - **Video (MP4)** — optionally set the resolution (360p–1080p or *Best available*).
-   - **Audio (MP3)** — 192 kbps, resolution is not applicable.
-4. Click **Browse** to pick the destination folder.
-5. Click **Download** and watch the progress. When finished, the destination folder opens automatically.
+1. Paste a video or audio link. The line below the field confirms the detected platform, or tells you if the text isn't a link.
+2. Choose a **format**:
+   - **Video (MP4)**: optionally set the quality (*Best available* or 1080p–360p).
+   - **Audio (MP3)**: 192 kbps. Quality is not applicable.
+3. Check **Save to** (your Downloads folder by default) or click **Browse…** to change it.
+4. Click **Download** or press <kbd>Enter</kbd> and follow the progress. Press **Cancel** or <kbd>Esc</kbd> to stop.
+5. When it finishes, click **Show in folder** to open the file's location. If something fails, the panel explains why in plain language and **Details** shows the full log.
 
 ### CLI
 
@@ -153,14 +156,33 @@ curl -X POST http://127.0.0.1:8000/download \
 
 ## Build from source
 
-Build a portable single-file executable with PyInstaller:
+Build the portable folder with PyInstaller, running it from the repo root:
 
 ```bash
 pip install pyinstaller
 pyinstaller notnet.spec
 ```
 
-The executable is written to `dist/notnet.exe`. For a fully portable build, make sure `binaries/ffmpeg.exe` is present next to the exe (the spec bundles it automatically when it exists).
+The build writes `dist/notnet/` (`notnet.exe` plus `_internal/`) and the release asset `dist/notnet-<version>-win64.zip`. Upload the zip to GitHub Releases; build output and FFmpeg never go into the repository. The spec:
+
+- builds a folder instead of a single `.exe`. A one-file build would unpack about 370 MB (mostly FFmpeg) to `%TEMP%` on every launch, which took 8–10 s. The folder build opens in under a second.
+- requires `binaries/ffmpeg.exe` and bundles everything in `binaries/` into `_internal/binaries`. The build stops if FFmpeg is missing, or if the FFmpeg binary was built as `nonfree` (not redistributable).
+- leaves out the Qt modules the app doesn't use (OpenGL software renderer, Quick/QML, PDF, SVG, network, image-format plugins, translations).
+- generates the app icon, the Windows version info (from `__version__` in `app/__init__.py`) and `THIRD_PARTY_NOTICES.md` with a `licenses/` folder (FFmpeg, Qt/PySide6, Python and each bundled package), all through `tools/build_assets.py`.
+- enables Python UTF-8 mode and disables UPX compression, which reduces antivirus false positives.
+
+### Code signing (optional, manual)
+
+Unsigned executables trigger SmartScreen warnings. If you have a code-signing certificate, sign and timestamp the exe after building:
+
+```powershell
+signtool sign /fd SHA256 /a /tr http://timestamp.digicert.com /td SHA256 dist\notnet\notnet.exe
+signtool verify /pa /v dist\notnet\notnet.exe
+```
+
+Sign before uploading, then recreate the zip, because the spec zips the folder at the end of the build.
+
+Always include an RFC 3161 timestamp (`/tr`). Without it, the signature stops being valid when the certificate expires.
 
 ## Project structure
 
@@ -172,13 +194,16 @@ mp3-mp4-downloader/
 │   └── main_cli.py          # CLI entry point + CLI Downloader
 ├── app/
 │   ├── core/
-│   │   └── downloader.py    # Shared download engine (Qt Signals + threads)
+│   │   └── downloader.py    # GUI download worker (QObject on a QThread, cancellable)
 │   ├── utils/
-│   │   ├── helpers.py       # get_ffmpeg_path(), validate_url()
-│   │   └── styles.py        # GUI stylesheet (QSS)
+│   │   ├── helpers.py       # ffmpeg path, URL checks, platform detection, error hints
+│   │   └── styles.py        # Colour + type tokens, QSS, app icon
 │   └── views/
-│       └── main_window.py   # Main window (validation, UI, worker threads)
+│       └── main_window.py   # Main window (form, progress panel, settings)
 ├── binaries/                # ffmpeg.exe (required at runtime, gitignored)
+├── tools/
+│   └── build_assets.py      # Icon, version resource and third-party notices for the spec
+├── licenses/                # GPL-3.0 / LGPL-3.0 texts shipped with the build
 ├── notnet.spec              # PyInstaller spec
 ├── requirements.txt         # Pinned dependencies
 └── descargas/               # CLI default output folder (gitignored)
@@ -186,9 +211,9 @@ mp3-mp4-downloader/
 
 ## Troubleshooting
 
-**FFmpeg not found (MP4 download fails)**
+**FFmpeg not found**
 
-The GUI validates that `ffmpeg.exe` exists before starting an MP4 download. Place it in `binaries/`, or pass an explicit path in the CLI with `--ffmpeg`.
+The GUI checks that `ffmpeg.exe` exists before starting any download, since MP4 merging and MP3 extraction both need it. Place it in `binaries/`, or pass an explicit path in the CLI with `--ffmpeg`.
 
 **Download fails mid-way**
 

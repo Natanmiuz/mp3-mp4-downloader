@@ -40,6 +40,7 @@ class Downloader:
             'ffmpeg_location': self.ffmpeg_path,
             'progress_hooks': [self._progress_hook],
             'noplaylist': True,
+            'concurrent_fragment_downloads': 4,  # fragmentos HLS/DASH en paralelo
             'quiet': False,
             'no_warnings': False,
         }
@@ -56,7 +57,12 @@ class Downloader:
             })
         else:
             print("[>] Formato seleccionado: Video (Mejor calidad disponible)")
-            options['format'] = 'bestvideo+bestaudio/best'
+            options.update({
+                'format': 'bestvideo+bestaudio/best',
+                # Prioriza H.264/AAC y fuerza contenedor .mp4 (si no, YouTube da .webm/.mkv)
+                'format_sort': ['res', 'ext:mp4:m4a'],
+                'merge_output_format': 'mp4',
+            })
 
         return options
 
